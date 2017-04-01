@@ -858,7 +858,7 @@ class Gcode_tools(inkex.Effect):
             elif s[1] == 'line':
                 if not firstGCode: #Include the ppm values for the first G01 command in the set.
                     gcode += "G01 " + self.make_args(si[0]) + " S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
-                    firstGCode = True
+                    #firstGCode = True
                 else:
                     gcode += "G01 " + self.make_args(si[0]) + "\n"
                 lg = 'G01'
@@ -878,7 +878,7 @@ class Gcode_tools(inkex.Effect):
 
                         if not firstGCode: #Include the ppm values for the first G01 command in the set.
                             gcode += " " + self.make_args(si[0] + [None, dx, dy, None]) + "S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
-                            firstGCode = True
+                            #firstGCode = True
                         else:
                             gcode += " " + self.make_args(si[0] + [None, dx, dy, None]) + "\n"
 
@@ -891,7 +891,7 @@ class Gcode_tools(inkex.Effect):
 
                         if not firstGCode: #Include the ppm values for the first G01 command in the set.
                             gcode += " " + self.make_args(si[0]) + " R%f" % (r*self.options.Xscale) + "S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
-                            firstGCode = True
+                            #firstGCode = True
                         else:
                             gcode += " " + self.make_args(si[0]) + " R%f" % (r*self.options.Xscale) + "\n"
 
@@ -901,7 +901,7 @@ class Gcode_tools(inkex.Effect):
                 else:
                     if not firstGCode: #Include the ppm values for the first G01 command in the set.
 						gcode += "G01 " + self.make_args(si[0]) + "S%.2f " % laserPower +  "%s " % cutFeed + "%s" % ppmValue + "\n"
-						firstGCode = True
+						#firstGCode = True
                     else:
 						gcode += "G01 " + self.make_args(si[0]) + "\n"
 
