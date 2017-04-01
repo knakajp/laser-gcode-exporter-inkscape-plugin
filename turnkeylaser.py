@@ -144,6 +144,7 @@ SVG_IMAGE_TAG = inkex.addNS('image', 'svg')
 SVG_TEXT_TAG = inkex.addNS('text', 'svg')
 SVG_LABEL_TAG = inkex.addNS("label", "inkscape")
 
+UNIT_SCALES = {'in':90.0, 'pt':1.25, 'px':1.0, 'mm':3.5433070866, 'cm':35.433070866, 'm':3543.3070866,'km':3543307.0866, 'pc':15.0, 'yd':3240.0 , 'ft':1080.0}
 
 GCODE_EXTENSION = ".g" # changed to be Marlin friendly (ajf)
 
@@ -1347,14 +1348,22 @@ class Gcode_tools(inkex.Effect):
         options = self.options
         selected = self.selected.values()
 
-        root = self.document.getroot()
-        #See if the user has the document setup in mm or pixels.
-        try:
-            self.pageHeight = float(root.get("height", None))
-        except:
-            inkex.errormsg(("Please change your inkscape project units to be in pixels, not inches or mm. In Inkscape press ctrl+shift+d and change 'units' on the page tab to px. The option 'default units' can be set to mm or inch, these are the units displayed on your rulers."))
-            return
+        unitmatch = re.compile('(%s)$' % '|'.join(UNIT_SCALES.keys()))
+        param = re.compile(r'(([-+]?[0-9]+(\.[0-9]*)?|[-+]?\.[0-9]+)([eE][-+]?[0-9]+)?)')
 
+        root = self.document.getroot()
+        heightString = root.get("height", None)
+        p = param.search(heightString)
+        u = unitmatch.search(heightString)
+
+        if u:
+            self.pageUnit = u.group(0)
+        else:
+            self.pageUnit = 'px'
+
+        # convert page height to 'px' units
+        self.pageHeight = float(p.group(0))*UNIT_SCALES[self.pageUnit]
+                
         self.flipArcs = (self.options.Xscale*self.options.Yscale < 0)
         self.currentTool = 0
 
@@ -1381,11 +1390,12 @@ class Gcode_tools(inkex.Effect):
 
         gcode = self.header;
 
+        # All internal svg coords are in 'px' regardless of document unit
         if (self.options.unit == "mm"):
-            self.unitScale = 0.282222222222
+            self.unitScale = 1/UNIT_SCALES['mm']
             gcode += "G21 ; All units in mm\n"
         elif (self.options.unit == "in"):
-            self.unitScale = 0.011111
+            self.unitScale = 1/UNIT_SCALES['in']
             gcode += "G20 ; All units in in\n"
         else:
             inkex.errormsg(("You must choose mm or in"))
