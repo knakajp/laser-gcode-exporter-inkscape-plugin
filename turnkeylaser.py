@@ -125,7 +125,7 @@ VERSION = "1.0.1"
 STRAIGHT_TOLERANCE = 0.0001
 STRAIGHT_DISTANCE_TOLERANCE = 0.0001
 LASER_ON = "M3 ;turn the laser on"          # LASER ON MCODE
-LASER_OFF = "M5 ;turn the laser off\n"        # LASER OFF MCODE
+LASER_OFF = "M5 ;turn the laser off\n"      # LASER OFF MCODE
 
 HEADER_TEXT = ""
 FOOTER_TEXT = ""
@@ -145,8 +145,6 @@ SVG_TEXT_TAG = inkex.addNS('text', 'svg')
 SVG_LABEL_TAG = inkex.addNS("label", "inkscape")
 
 UNIT_SCALES = {'in':90.0, 'pt':1.25, 'px':1.0, 'mm':3.5433070866, 'cm':35.433070866, 'm':3543.3070866,'km':3543307.0866, 'pc':15.0, 'yd':3240.0 , 'ft':1080.0}
-
-GCODE_EXTENSION = ".g" # changed to be Marlin friendly (ajf)
 
 options = {}
 
@@ -404,6 +402,7 @@ def get_layers(document):
             layers.append(node)
     return layers
 
+# Parse the power [arg=value] formatted layer names
 def parse_layer_name(txt):
     params = {}
     try:
@@ -415,13 +414,15 @@ def parse_layer_name(txt):
         args = txt[n+1:].strip()
         if (args.endswith("]")):
             args = args[0:-1]
+        # Allow spaces in the args list
+        args = args.replace(' ', '')
 
         for arg in args.split(","):
             try:
                 (field, value) = arg.split("=")
             except:
                 raise ValueError("Invalid argument in layer '%s'" % layerName)
-            if (field == "feed" or field == "ppm"):
+            if (field == "feed" or field == "f" or field == "ppm" or field == "power" or field == "p"):
                 try:
                     value = float(value)
                 except:
@@ -464,7 +465,7 @@ class Gcode_tools(inkex.Effect):
         self.OptionParser.add_option("-l", "--laser",                    action="store", type="int",         dest="laser", default="10",                        help="Default Laser intensity (0-100 %)")
         self.OptionParser.add_option("-b",   "--homebefore",                 action="store", type="inkbool",    dest="homebefore", default=True, help="Home all beofre starting (G28 XY)")
         self.OptionParser.add_option("-a",   "--homeafter",                 action="store", type="inkbool",    dest="homeafter", default=False, help="Home X Y at end of job")
-
+        self.OptionParser.add_option("",   "--airassist",                 action="store", type="inkbool",    dest="airassist", default=False, help="Air assist")
 
         self.OptionParser.add_option("",   "--biarc-tolerance",            action="store", type="float",         dest="biarc_tolerance", default="1",        help="Tolerance used when calculating biarc interpolation.")
         self.OptionParser.add_option("",   "--biarc-max-split-depth",    action="store", type="int",         dest="biarc_max_split_depth", default="4",        help="Defines maximum depth of splitting while approximating using biarcs.")
@@ -822,17 +823,20 @@ class Gcode_tools(inkex.Effect):
 
         #Setup our pulse per millimetre option, if applicable
         #B: laser firing mode (0 = continuous, 1 = pulsed, 2 = raster)
-        if (altppm):
-            # Use the "alternative" ppm - L60000 is 60us
-            ppmValue = "L60000 P%.2f B1 D0" % altppm
-        else:
-            #Set the laser firing mode to continuous.
-            ppmValue = "B0 D0"
+
+        ppmValue = " "
+        if self.options.mainboard != 'linuxcnc':
+            if (altppm):
+                # Use the "alternative" ppm - L60000 is 60us
+                ppmValue = "L60000 P%.2f B1 D0" % altppm
+            else:
+                #Set the laser firing mode to continuous.
+                ppmValue = "B0 D0"
 
         cwArc = "G02"
         ccwArc = "G03"
 
-		# The geometry is reflected, so invert the orientation of the arcs to match
+        # The geometry is reflected, so invert the orientation of the arcs to match
         if (self.flipArcs):
             (cwArc, ccwArc) = (ccwArc, cwArc)
 
@@ -843,19 +847,21 @@ class Gcode_tools(inkex.Effect):
         for i in range(1,len(curve['data'])):
             s, si = curve['data'][i-1], curve['data'][i]
 
-			#G00 : Move with the laser off to a new point
+            #G00 : Move with the laser off to a new point
             if s[1] == 'move':
-                #Turn off the laser if it was on previously.
-                #if lg != "G00":
-                #    gcode += LASER_OFF + "\n"
-
                 gcode += "G00 " + self.make_args(si[0]) + " F%i " % self.options.Mfeed + "\n"
                 lg = 'G00'
+                # Set power and turn on laser here on linuxcnc
+                if self.options.mainboard == 'linuxcnc':
+                    gcode += "S%.2f ;set power\n" % laserPower
+                    gcode += LASER_ON+"\n"
 
             elif s[1] == 'end':
+                # end of a path - turn off laser
+                gcode += LASER_OFF + "\n"
                 lg = 'G00'
 
-			#G01 : Move with the laser turned on to a new point
+            #G01 : Move with the laser turned on to a new point
             elif s[1] == 'line':
                 if not firstGCode: #Include the ppm values for the first G01 command in the set.
                     gcode += "G01 " + self.make_args(si[0]) + " S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
@@ -878,7 +884,7 @@ class Gcode_tools(inkex.Effect):
                             gcode += ccwArc
 
                         if not firstGCode: #Include the ppm values for the first G01 command in the set.
-                            gcode += " " + self.make_args(si[0] + [None, dx, dy, None]) + "S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
+                            gcode += " " + self.make_args(si[0] + [None, dx, dy, None]) + " S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
                             #firstGCode = True
                         else:
                             gcode += " " + self.make_args(si[0] + [None, dx, dy, None]) + "\n"
@@ -891,7 +897,7 @@ class Gcode_tools(inkex.Effect):
                             gcode += ccwArc
 
                         if not firstGCode: #Include the ppm values for the first G01 command in the set.
-                            gcode += " " + self.make_args(si[0]) + " R%f" % (r*self.options.Xscale) + "S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
+                            gcode += " " + self.make_args(si[0]) + " R%f" % (r*self.options.Xscale) + " S%.2f " % laserPower + "%s " % cutFeed + "%s" % ppmValue + "\n"
                             #firstGCode = True
                         else:
                             gcode += " " + self.make_args(si[0]) + " R%f" % (r*self.options.Xscale) + "\n"
@@ -901,7 +907,7 @@ class Gcode_tools(inkex.Effect):
                 #The arc is less than the minimum arc radius, draw it as a straight line.
                 else:
                     if not firstGCode: #Include the ppm values for the first G01 command in the set.
-						gcode += "G01 " + self.make_args(si[0]) + "S%.2f " % laserPower +  "%s " % cutFeed + "%s" % ppmValue + "\n"
+						gcode += "G01 " + self.make_args(si[0]) + " S%.2f " % laserPower +  "%s " % cutFeed + "%s" % ppmValue + "\n"
 						#firstGCode = True
                     else:
 						gcode += "G01 " + self.make_args(si[0]) + "\n"
@@ -1167,8 +1173,15 @@ class Gcode_tools(inkex.Effect):
                 return
 
             # Check if the layer specifies an alternative (from the default) feed rate
-            altfeed = layerParams.get("feed", self.options.feed)
+            if (layerParams.get("f", None)):
+                altfeed = layerParams.get("f", self.options.feed)
+            else:
+                altfeed = layerParams.get("feed", self.options.feed)
             altppm = layerParams.get("ppm", None)
+            if (layerParams.get("p", None)):
+                laserPower = layerParams.get("p", None)
+            else:
+                laserPower = layerParams.get("power", None)
 
             logger.write("layer %s" % layerName)
             if (layerParams):
@@ -1209,16 +1222,17 @@ class Gcode_tools(inkex.Effect):
             #Determind the power of the laser that this layer should be cut at.
             #If the layer is not named as an integer value then default to the laser intensity set at the export settings.
             #Fetch the laser power from the export dialog box.
-            laserPower = self.options.laser
-
-            try:
-                if (int(layerName) > 0 and int(layerName) <= 100):
-                    laserPower = int(layerName)
-                else :
-                    laserPower = self.options.laser
-            except ValueError,e:
+            if (not laserPower):
                 laserPower = self.options.laser
-                inkex.errormsg("Unable to parse power level for layer name. Using default power level %d percent." % (self.options.laser))
+
+                try:
+                    if (int(layerName) > 0 and int(layerName) <= 100):
+                        laserPower = int(layerName)
+                    else :
+                        laserPower = self.options.laser
+                except ValueError,e:
+                    laserPower = self.options.laser
+                    inkex.errormsg("Unable to parse power level for layer name. Using default power level %d percent." % (self.options.laser))
 
 
 
@@ -1236,7 +1250,9 @@ class Gcode_tools(inkex.Effect):
 
                 #Turnkey : Always output the layer header for information.
                 if (len(layers) > 0):
-                    header_data += LASER_OFF+"\n"
+                    # Laser can't be turned on yet on linuxcnc
+                    if self.options.mainboard != 'linuxcnc':
+                        header_data += LASER_OFF+"\n"
                     size = 60
                     header_data += ";(%s)\n" % ("*"*size)
                     header_data += (";(***** Layer: %%-%ds *****)\n" % (size-19)) % (originalLayerName)
@@ -1296,14 +1312,15 @@ class Gcode_tools(inkex.Effect):
                     #Fetch the laser power from the export dialog box.
                     laserPower = self.options.laser
 
-                    try:
-                        if (int(layerName) > 0 and int(layerName) <= 100):
-                            laserPower = int(layerName)
-                        else :
+                    if (not laserPower):
+                        try:
+                            if (int(layerName) > 0 and int(layerName) <= 100):
+                                laserPower = int(layerName)
+                            else :
+                                laserPower = self.options.laser
+                        except ValueError,e:
                             laserPower = self.options.laser
-                    except ValueError,e:
-                        laserPower = self.options.laser
-                        inkex.errormsg("Unable to parse power level for layer name. Using default power level %d percent." % (self.options.laser))
+                            inkex.errormsg("Unable to parse power level for layer name. Using default power level %d percent." % (self.options.laser))
 
                     #Switch between smoothie power levels and ramps+marlin power levels
                     #ramps and marlin expect 0 to 100 while smoothie wants 0.0 to 1.0
@@ -1335,7 +1352,11 @@ class Gcode_tools(inkex.Effect):
                         gcode_raster += header_data+self.generate_raster_gcode(curve, laserPower, altfeed=altfeed)
 
         if self.options.homeafter:
-            gcode += "\n\nG00 X0 Y0 F4000 ; home"
+            gcode += "\n\nG00 X0 Y0 F4000 ; home\n"
+
+        # Linuxcnc wants M2 in the end
+        if self.options.mainboard == 'linuxcnc':
+            gcode += "\n\nM2 ;program end\n\n"
 
 
         #Always raster before vector cutting.
@@ -1363,7 +1384,7 @@ class Gcode_tools(inkex.Effect):
 
         # convert page height to 'px' units
         self.pageHeight = float(p.group(0))*UNIT_SCALES[self.pageUnit]
-                
+
         self.flipArcs = (self.options.Xscale*self.options.Yscale < 0)
         self.currentTool = 0
 
@@ -1371,6 +1392,8 @@ class Gcode_tools(inkex.Effect):
         if (self.filename == "-1.0" or self.filename == ""):
             inkex.errormsg(("Please select an output file name."))
             return
+
+        GCODE_EXTENSION = ".ngc" if (self.options.mainboard == 'linuxcnc') else '.g'
 
         if (not self.filename.lower().endswith(GCODE_EXTENSION)):
             # Automatically append the correct extension
@@ -1401,7 +1424,8 @@ class Gcode_tools(inkex.Effect):
             inkex.errormsg(("You must choose mm or in"))
             return
 
-        gcode += "M80 ; Turn on Optional Peripherals Board at LMN\n"
+        if self.options.mainboard != 'linuxcnc':
+            gcode += "M80 ; Turn on Optional Peripherals Board at LMN\n"
 
 
         #Put the header data in the gcode file
@@ -1411,8 +1435,13 @@ class Gcode_tools(inkex.Effect):
 ; Default Move Feedrate %i mm per minute
 ; Default Laser Intensity %i percent\n""" % (self.options.feed, self.options.Mfeed, self.options.laser)
 
+        if self.options.airassist:
+            gcode += "M7 ;turn on air assist\n\n"
+
+        # G28 homing not supported on linuxcnc
         if self.options.homebefore:
-            gcode += "G28 XY; home X and Y\n\n"
+            if self.options.mainboard != 'linuxcnc':
+                gcode += "G28 XY; home X and Y\n\n"
 
         #if self.options.function == 'Curve':
         data = self.effect_curve(selected)
