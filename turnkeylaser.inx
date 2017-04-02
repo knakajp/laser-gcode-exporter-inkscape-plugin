@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension>
-    <name>TurnkeyLaser Exporter</name>
+    <name>Laser GCode Exporter</name>
     <id>com.turnkey.Tyranny</id>
 
     <effect>
         <object-type>path</object-type>
         <effects-menu>
-            <submenu _name="Export"/>
+            <submenu _name="Laser Tools"/>
         </effects-menu>
     </effect>
 
