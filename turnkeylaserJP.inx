@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<inkscape-extension>
+    <_name>Laser GCode Exporter JP</_name>
+    <id>com.knakajp.laser_gcode_exporter_jp</id>
+
+    <effect>
+        <object-type>path</object-type>
+        <effects-menu>
+            <submenu _name="Laser Tools"/>
+        </effects-menu>
+    </effect>
+
+    <dependency type="executable" location="extensions">turnkeylaserJP.py</dependency>
+    <dependency type="executable" location="extensions">inkex.py</dependency>
+
+    <script>
+        <command reldir="extensions" interpreter="python">turnkeylaserJP.py</command>
+    </script>
+
+    <param name='tab' type="notebook">
+        <page name='tab' _gui-text='Help'>
+            <_param name="fullhelp" type="description">Laser GCode Exporter JP は TurnkeyLaser Exporter (https://github.com/TurnkeyTyranny/laser-gcode-exporter-inkscape-plugin) にいくつかの変更を加えて日本語化したものです。詳細は https://github.com/knakajp/laser-gcode-exporter-inkscape-plugin をご覧ください。
+
+Laser GCode Exporter は Inkscape のパスを Ramps + Marlin、Smoothieware、LinuxCNC laser のメインボードと互換性のあるGコードに変換して書き出します。(Ramps + Marlin、MKS GEN V1.4 以外での動作は確認していません)
+
+レーザー出力(power)と送り速度(feed)、パルスレーザーモードでの1mmあたりのパルス数(ppm)をレイヤ名で指定することができます。
+
+1) 次の例のようにレイヤに名前を付けます。
+　　Holes[power=35, feed=600, ppm=40]
+　　Outlines[power=60, feed=800]
+2) デザインを描画し、レイヤ名のレーザー加工条件に基づいてグループ化します。
+3) エクスポートするパスを選択して、このエクステンションスクリプトを実行します。
+
+上の例では、Holesレイヤのパスをレーザー出力35%、送り速度600mm/min、1mmあたり40パルスで加工し、Outlinesレイヤのパスを出力60%、送り800mm/minの連続波モードで加工します。
+
+オリジナルのレイヤ名も使えます。
+　　35[feed=600,ppm=40]
+
+短いパラメータ名を使えます。
+　　Holes[p=35,f=600,ppm=40]
+
+最新のバージョンについては、https://github.com/knakajp/laser-gcode-exporter-inkscape-plugin をご覧ください。
+        </_param>
+        </page>
+
+        <page name='tab' _gui-text='詳細設定'>
+            <param name="mainboard" type="enum" _gui-text="メインボード: ">
+                <item value="ramps">Ramps 1.4</item>
+                <item value="smoothie">Smoothie</item>
+                <item value="linuxcnc">LinuxCNC</item>
+            </param>
+            <param name="pronterface" type="boolean" _gui-text="Pronterface を使用する">true</param>
+            <_param name="help" type="description">pronterface と互換性があるようにラスタデータを調整します。100%黒色領域でのレーザー出力がわずかに損なわれます。</_param>
+
+            <param name="biarc-tolerance" type='float' _gui-text='Biarc 補間公差'>0.5</param>
+            <_param name="help" type="description">Biarc 補間公差は、パスとその近似値との最大許容距離です。この値を超えると、パスは２つのセグメントに分割されます。</_param>
+            <param name="biarc-max-split-depth" type="int" _gui-text="最大分割深度">4</param>
+            <param name="min-arc-radius" type="float" precision="5" min="-1000" max="5000"  _gui-text="最小円弧半径">0.00005</param>
+            <param name="Xoffset" type="float" precision="4" min="-1000" max="1000" _gui-text="X軸オフセット">0.0</param>
+            <param name="Yoffset" type="float" precision="4" min="-1000" max="1000" _gui-text="Y軸オフセット">0.0</param>
+            <param name="logging" type="boolean" _gui-text="プラグインのデバッグ出力を記録する:">true</param>
+            <param name="optimiseraster" type="boolean" _gui-text="ラスタの水平スキャン速度を最適化する:">true</param>
+            <_param name="help" type="description">ラスタパスを最適化するとラスタのエッジでわずかなオーバーバーンを引き起こす可能性があります。</_param>
+
+        </page>
+
+        <page name='tab' _gui-text='設定'>
+            <param name="origin" type="enum" _gui-text="Y軸基点: ">
+                <item value="topleft">左上</item>
+                <item value="bottomright">左下</item>
+            </param>
+            <_param name="help" type="description">レーザーヘッドのホームポジション/加工開始基点を選択してください。</_param>
+            <param name="filename" type="string" _gui-text="出力ファイル名: ">output.g</param>
+            <param name="directory" type="string" _gui-text="ディレクトリ: "></param>
+            <_param name="help" type="description">(省略するとデスクトップに保存)</_param>
+            <param name="feed" type="int" min="0" max="5000" _gui-text="省略時の加工速度:">300</param>
+            <param name="Mfeed" type="int" min="0" max="5000" _gui-text="省略時の早送り速度:">2000</param>
+            <param name="laser" type="int" min="0" max="100" _gui-text="省略時のレーザー出力 (0-100%):">10</param>
+            <param name="homebefore" type="boolean" _gui-text="加工前に原点復帰する">false</param>
+            <param name="homeafter" type="boolean" _gui-text="加工後に原点へ移動する">false</param>
+            <param name="airassist" type="boolean" _gui-text="アシストエアー">false</param>
+
+            <param name="Xscale" type="float" precision="4" min="-1000" max="1000" _gui-text="X軸方向の尺度:">1</param>
+            <param name="Yscale" type="float" precision="4" min="-1000" max="1000" _gui-text="Y軸方向の尺度:">1</param>
+            <param name="double_sided_cutting" type="boolean" _gui-text="材料の両サイドを切断する">false</param>
+            <param name="draw-curves" type="boolean" _gui-text="カーブを inkscape のレイヤに描画する">true</param>
+
+            <param name="unit" type="enum" _gui-text="単位: ">
+                <item value="mm">mm</item>
+                <item value="in">in</item>
+            </param>
+        </page>
+    </param>
+</inkscape-extension>

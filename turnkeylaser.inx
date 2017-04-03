@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <inkscape-extension>
-    <name>Laser GCode Exporter</name>
+    <name>TurnkeyLaser Exporter</name>
     <id>com.turnkey.Tyranny</id>
 
     <effect>

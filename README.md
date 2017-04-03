@@ -1,10 +1,68 @@
+
+Laser G-Code Exporter JP
+---
+Inkscape で描いた図形をレーザー加工機用の G-Code に変換するエクステンションです。
+
+概要
+---
+このプロジェクトは https://github.com/TurnkeyTyranny/laser-gcode-exporter-inkscape-plugin から派生しました。
+
+オリジナルに以下の変更を加えて日本語化しました。
+* 加工命令(G01, G02, G03)に、常にフィードレート(F)とレーザー出力(S)を付加するように変更しました。
+* Inkscape ドキュメントの単位が px 以外の場合に対応しました。
+* レイヤ名でのパラメータ指定方法を変更しました。
+
+セットアップ
+---
+英語版(turnkeylaser.inx, turnkeylaser.py) または日本語版(turnkeylaserJP.inx, turnkeylaser.py) または両方を Inkscape の エクステンションフォルダにコピーします。
+
+Mac OS X の場合は ~/.config/inkscape/extensions にコピーします。
+
+Inkscape を起動すると [エクステンション] → [Laser Tools] に "Laser GCode Exporter" が追加されていますので、これを選択して起動します。
+
+
+使い方
+---
+1. Inkscape のレイヤに次の例のように名前を付けます。
+　　Holes[power=35,feed=600,ppm=40]
+　　Outlines[power=45,feed=800]
+2. デザインを描画し、レイヤ名で指定したレーザー加工条件に基づいてパスをレイヤに配置します。
+3. エクスポートするパスを選択した状態で、[エクステンション] → [Laser Tools] → [Laser GCode Exporter...] でエクステンションを起動します。
+4. 設定タブと詳細設定タブで、出力ファイル名や変換条件を設定します。ここで設定した変換条件は次回のために保存されます。
+5. [Apply] をクリックしてスクリプトを実行します。
+6. 実行結果を示すウィンドウが表示されるので、確認して[OK]をクリックします。
+7. [Close] をクリックしてウィンドウを閉じます。
+
+上の例では、レイヤ'Holes'のパスをレーザー出力35%、送り速度600mm/min、1mmあたり40パルスのパルスモードで加工します。また、レイヤ'Outlines'のパスをレーザー出力45%、送り速度800mm/min の連続波モードで加工します。
+
+* 'power' や 'feed' を省略すると、設定タブの省略値で加工します。
+* 'ppm' を省略すると、連続波モードで加工します。
+* '35[feed=600,ppm=40]' のような従来式のレイヤ名も使えます。
+* 'power' と 'feed' の指定には、'p' や 'f' の省略名が使えます。'ppm' に省略名はありません。
+   例：Holes[p=35,f=600,ppm=40]
+
+注意事項
+---
+* 'Ramps + Marlin Laser' と 'MKS GEN V1.4 + Marlin Laser' の組み合わせでの動作確認しかしていません。その他のマザーボード、ファームウェアでの動作については未確認です。
+
+関連プロジェクト
+---
+* Forked from
+https://github.com/TurnkeyTyranny/laser-gcode-exporter-inkscape-plugin
+* Support all document units, not just 'px'
+https://github.com/vranki/laser-gcode-exporter-inkscape-plugin/commit/7edc5126b02ab79c2692ff450bec7aeb5070b000
+* Changed the way how laser parameters are acquired from layer names because I want to use descriptive names. 5 formats are supported now.
+https://github.com/janilahti/laser-gcode-exporter-inkscape-plugin/commit/15cb26c89d4a51bb9ef3723063432fb355e7f8f7
+
+
+---
+以下はオリジナルの README.md です。
+The following is the original README.md
+
 About This Project
 ------------------
 This project was intended to build and all in one exporting plugin for laser cutters and Inkscape 0.91. It has not been tested on lower versions of Inkscape but may work..
-The plugin builds gcode that is compatible with:
-
-* A fork of Marlin designed to run on laser cutters found at https://github.com/TurnkeyTyranny/buildlog-lasercutter-marlin .
-* LinuxCNC based lasers (no support for raster images)
+The plugin builds gcode that is compatible with a fork of Marlin designed to run on laser cutters found at https://github.com/TurnkeyTyranny/buildlog-lasercutter-marlin .
 
 You can contact me via email at : 394ad2f@gmail.com, I check my email daily usually.
 
@@ -15,16 +73,14 @@ Find this software useful? Donations are gratefully appreciated.
 * Paypal to 394ad2f@gmail.com
 * Bitcoins to 16TFmnFyvDA8Q6TTakvvhargy8c89Rb3cj
 
-Windows Installation
---------------------
+Installation
+------------
 
 Copy the files turnkeylaser.py and turnkeylaser.inx into your Inkscape extensions folder -> C:\Program Files\Inkscape\share\extensions
 Fire up inkscape and you will find the plugin under Extensions -> Export -> Turnkey Laser Exporter.
 
-This script relies on a more advanced version of the PIL library than Inkscape for windows ships with. As such you need to follow these steps for windows installs of Inkscape 0.91.
-Note: PIL is needed only for raster images. If you cut only vectors, you won't need to update PIL.
-
-If you want to update PIL, you have two options to follow. Choose the one you prefer.
+This script relies on a more advanced version of the PIL library than Inkscape for windows ships with. As such you need to follow these steps for windows installs of Inkscape 0.91
+You have two options to follow, choose the one you prefer.
 
 1) You can alternatively install python on your system, or use my precompiled version. To install python natively :
 * visit https://www.python.org/downloads/ and download python 2.7.9 32 bit version (https://www.python.org/ftp/python/2.7.9/python-2.7.9.msi) and install it to C:\Python27\ . Select the option to add Python to your path during install.
@@ -54,11 +110,7 @@ If you want to update PIL, you have two options to follow. Choose the one you pr
 
 Linux Installation
 ------------------
-
-* Copy the plugin into extensions directory: cp turnkeylaser.inx turnkeylaser.py $HOME/.config/inkscape/extensions/
-* Install the PIL library: sudo apt-get install python3-pil
-
-That's it! Restart Inkscape, if it was running.
+More fleshed out instructions to come at a later date. Essentially just install the PIL library through yum or apt-get and place the 2 script files (.py and .inx) into your extensions directory.
 
 Usage and Setup
 ---------------
@@ -157,8 +209,3 @@ Disabled raster horizintal movement optimisation as it has a bug. Rasters will b
 11-April-2015 - Added back in raster optimising, it's not perfect but it's mostly there. Only a little slow parsing white vertical space now.
 Found that raster optimisation code seems to be changing the pixel data at the end of the line somewhere. I'm not sure how since it's meant to just be cutting part of the data line out not changing it. will need to investigate further.
 Added option to the menu for users to disable raster optimisations.
-
-05-February-2016 - Added support for LinuxCNC based lasers and Air Assist option.
-
-8-February-2016 - Changed the way how laser parameters are acquired from the layer name. You can use descriptive names for layers with the params (power or p, ppm, feed or f). If some parameter is missing, a default value is used. Spaces are allowed in the args list.
-The following 5 formats (without quotes) are recognized: "LayerName" -- just a descriptive name, get all default values from dialog box. "42" -- just a power setting, rest using defaults. "42 [feed=123]" -- power and feed. "[power=42, f=123]" -- power and feed. "LayerName [p=42, f=123]" -- descriptive name, power and feed.
